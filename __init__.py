@@ -210,12 +210,26 @@ class HomeAssistantSkill(FallbackSkill):
         action = message.data["Action"]
         LOGGER.debug("Entity: %s" % entity)
         LOGGER.debug("Action: %s" % action)
+
+        # Check which action to apply
+        if self.language == 'de':
+            if action == 'ein':
+                action = 'on'
+            elif action == 'aus':
+                action = 'off'
+
+        # Filter type of entities based on action
+        if action == 'on':
+            domains = ['group', 'light', 'fan', 'switch', 'scene',
+                       'input_boolean']
+        else:
+            # scenes etc can't be toggled or turned off
+            domains = ['group', 'light', 'fan', 'switch', 'input_boolean']
         # TODO if entity is 'all', 'any' or 'every' turn on
         # every single entity not the whole group
         try:
             ha_entity = self.ha.find_entity(
-                entity, ['group', 'light', 'fan', 'switch', 'scene',
-                         'input_boolean'])
+                entity, domains)
         except ConnectionError:
             self.speak_dialog('homeassistant.error.offline')
             return
@@ -229,11 +243,6 @@ class HomeAssistantSkill(FallbackSkill):
         # IDEA: set context for 'turn it off' again or similar
         # self.set_context('Entity', ha_entity['dev_name'])
 
-        if self.language == 'de':
-            if action == 'ein':
-                action = 'on'
-            elif action == 'aus':
-                action = 'off'
         if ha_entity['state'] == action:
             LOGGER.debug("Entity in requested state")
             self.speak_dialog('homeassistant.device.already', data={
@@ -242,16 +251,16 @@ class HomeAssistantSkill(FallbackSkill):
             self.ha.execute_service("homeassistant", "toggle",
                                     ha_data)
             if(ha_entity['state'] == 'off'):
-                action = 'on'
+                new_state = 'on'
             else:
-                action = 'off'
-            self.speak_dialog('homeassistant.device.%s' % action,
+                new_state = 'off'
+            self.speak_dialog('homeassistant.device.%s' % new_state,
                               data=ha_entity)
         elif action in ["on", "off"]:
-            self.speak_dialog('homeassistant.device.%s' % action,
-                              data=ha_entity)
             self.ha.execute_service("homeassistant", "turn_%s" % action,
                                     ha_data)
+            self.speak_dialog('homeassistant.device.%s' % action,
+                              data=ha_entity)
         else:
             self.speak_dialog('homeassistant.error.sorry')
             return
@@ -392,7 +401,7 @@ class HomeAssistantSkill(FallbackSkill):
         else:
             self.speak_dialog('homeassistant.error.sorry')
             return
-    
+
     @intent_handler(IntentBuilder("AutomationIntent").require(
             "AutomationActionKeyword").require("Entity").build())
     def handle_automation_intent(self, message):
@@ -498,6 +507,8 @@ class HomeAssistantSkill(FallbackSkill):
     # Proximity might be an issue
     # - overlapping command for directions modules
     # - (e.g. "How far is x from y?")
+    @intent_handler(IntentBuilder("TrackerIntent").require(
+            "DeviceTrackerKeyword").require("Entity").build())
     def handle_tracker_intent(self, message):
         self._setup()
         if self.ha is None:
@@ -525,8 +536,6 @@ class HomeAssistantSkill(FallbackSkill):
                           data={'dev_name': dev_name,
                                 'location': dev_location})
 
-    @intent_handler(IntentBuilder("TrackerIntent").require(
-            "DeviceTrackerKeyword").require("Entity").build())
     def handle_fallback(self, message):
         if not self.enable_fallback:
             return False
