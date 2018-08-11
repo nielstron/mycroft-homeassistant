@@ -140,6 +140,7 @@ class HomeAssistantSkill(FallbackSkill):
         if ha_entity is None:
             self.speak_dialog('homeassistant.device.unknown', data={
                               "dev_name": entity})
+        LOGGER.debug(ha_entity)
         return ha_entity
 
     # Calls passed method and catches often occurring exceptions

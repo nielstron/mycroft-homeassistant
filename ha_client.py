@@ -1,6 +1,7 @@
 from requests import get, post
 from fuzzywuzzy import fuzz
 import json
+from __init__ import LOGGER
 
 __author__ = 'btotharye'
 
@@ -55,31 +56,27 @@ class HomeAssistantClient(object):
             for state in json_data:
                 try:
                     if state['entity_id'].split(".")[0] in types:
-                        # something like temperature outside
-                        # should score on "outside temperature sensor"
-                        # and repetitions should not count on my behalf
-                        score = fuzz.token_sort_ratio(
-                            entity,
-                            state['attributes']['friendly_name'].lower())
-                        if score > best_score:
-                            best_score = score
-                            best_entity = {
-                                "id": state['entity_id'],
-                                "dev_name": state['attributes']
-                                ['friendly_name'],
-                                "state": state['state'],
-                                "best_score": best_score}
-                        score = fuzz.token_sort_ratio(
-                            entity,
-                            state['entity_id'].lower())
-                        if score > best_score:
-                            best_score = score
-                            best_entity = {
-                                "id": state['entity_id'],
-                                "dev_name": state['attributes']
-                                ['friendly_name'],
-                                "state": state['state'],
-                                "best_score": best_score}
+                        for name in [
+                            state['attributes']['friendly_name'].lower(),
+                            " ".join(state['entity_id'].split(".")).lower()
+                            ]:
+                            # something like temperature outside
+                            # should score on "outside temperature sensor"
+                            # and repetitions should not count on my behalf
+                            score = fuzz.token_sort_ratio(
+                                entity,
+                                name
+                            )
+
+                            if score > best_score:
+                                best_score = score
+                                best_entity = {
+                                    "id": state['entity_id'],
+                                    "dev_name": state['attributes']
+                                    ['friendly_name'],
+                                    "state": state['state'],
+                                    "best_score": best_score,
+                                    "name": name}
                 except KeyError:
                     pass
             return best_entity
