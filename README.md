@@ -14,6 +14,7 @@ Currently the following entity types are supported: `light`, `switch`, `scene`, 
 ## Credits 
 @BongoEADGC6
 @btotharye
+@nielstron
 Mycroft AI (@mycroftai)
 
 ## Category
